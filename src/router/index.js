@@ -13,6 +13,7 @@ import Services from "@/views/public/Services.vue"
 import UserLogin from "@/views/auth/user/UserLogin.vue"
 import UserRegister from "@/views/auth/user/UserRegister.vue"
 import ForgotPassword from "@/views/auth/user/ForgotPassword.vue"
+import EmailConfirmed from "@/views/auth/EmailConfirmed.vue"
 
 import DriverLogin from "@/views/auth/driver/DriverLogin.vue"
 import DriverRegister from "@/views/auth/driver/DriverRegister.vue"
@@ -54,6 +55,9 @@ const routes = [
   { path: "/auth/user/login", name: "UserLogin", component: UserLogin },
   { path: "/auth/user/register", name: "UserRegister", component: UserRegister },
   { path: "/auth/user/forgot-password", name: "ForgotPassword", component: ForgotPassword },
+
+  // Email confirmation route
+  { path: "/auth/email-confirmed", name: "EmailConfirmed", component: EmailConfirmed },
 
   // Driver auth routes
   { path: "/auth/driver/login", name: "DriverLogin", component: DriverLogin },
@@ -121,14 +125,6 @@ router.beforeEach(async (to, from, next) => {
   // Check authentication status
   await checkAuth()
 
-  // Handle email verification success
-  if (to.query.verified === "true") {
-    // Show success message and redirect to login
-    setTimeout(() => {
-      toast.success("Email verified successfully! You can now log in.")
-    }, 100)
-  }
-
   if (to.meta.requiresAuth) {
     if (!user.value) {
       // Redirect to appropriate login page based on role
@@ -145,7 +141,7 @@ router.beforeEach(async (to, from, next) => {
   }
 
   // Redirect authenticated users away from auth pages
-  if (to.path.includes("/auth/") && user.value) {
+  if (to.path.includes("/auth/") && user.value && !to.path.includes("/email-confirmed")) {
     next(`/dashboard/${userRole.value}`)
     return
   }

@@ -22,39 +22,10 @@
 
     <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
       <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-        <!-- Error message for email verification -->
-        <div v-if="showVerificationError" class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-          <div class="flex">
-            <div class="flex-shrink-0">
-              <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-              </svg>
-            </div>
-            <div class="ml-3">
-              <p class="text-sm font-medium">{{ verificationErrorMessage }}</p>
-              <button 
-                @click="resendEmail" 
-                :disabled="resendLoading"
-                class="mt-2 text-sm underline hover:no-underline"
-              >
-                {{ resendLoading ? 'Sending...' : 'Resend verification email' }}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Success message for email verification -->
-        <div v-if="showVerificationSuccess" class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
-          <div class="flex">
-            <div class="flex-shrink-0">
-              <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-              </svg>
-            </div>
-            <div class="ml-3">
-              <p class="text-sm font-medium">Email verified successfully! You can now log in.</p>
-            </div>
-          </div>
+        
+        <!-- ONLY show login error if there's an actual error -->
+        <div v-if="loginError" class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+          <p class="text-sm font-medium">{{ loginError }}</p>
         </div>
 
         <form @submit.prevent="handleLogin" class="space-y-6">
@@ -174,10 +145,7 @@ import { useRoute, useRouter } from 'vue-router'
 const route = useRoute()
 const router = useRouter()
 const showPassword = ref(false)
-const showVerificationSuccess = ref(false)
-const showVerificationError = ref(false)
-const verificationErrorMessage = ref('')
-const resendLoading = ref(false)
+const loginError = ref('')
 
 const form = reactive({
   email: '',
@@ -190,7 +158,7 @@ const errors = reactive({
   password: ''
 })
 
-const { login, loading, resendVerification } = useAuth()
+const { login, loading } = useAuth()
 
 const validateForm = () => {
   errors.email = ''
@@ -221,48 +189,22 @@ const validateForm = () => {
 
 const handleLogin = async () => {
   if (!validateForm()) return
-  await login(form.email, form.password, 'user')
-}
-
-const resendEmail = async () => {
-  if (!form.email) {
-    errors.email = 'Please enter your email address first'
-    return
-  }
   
-  resendLoading.value = true
-  const result = await resendVerification(form.email)
-  resendLoading.value = false
+  // Clear previous errors
+  loginError.value = ''
   
-  if (result.success) {
-    showVerificationError.value = false
+  console.log("🚀 Attempting login...")
+  const result = await login(form.email, form.password, 'user')
+  
+  if (!result.success) {
+    loginError.value = result.error?.message || 'Login failed. Please try again.'
+    console.log("❌ Login failed:", loginError.value)
   }
 }
 
+// Remove all the verification success/error logic from onMounted
 onMounted(() => {
-  // Check URL parameters for verification status
-  const verified = route.query.verified === 'true'
-  const error = route.query.error
-  const errorDescription = route.query.error_description
-
-  if (verified && !error) {
-    showVerificationSuccess.value = true
-    // Hide success message after 5 seconds
-    setTimeout(() => {
-      showVerificationSuccess.value = false
-    }, 5000)
-  } else if (error) {
-    showVerificationError.value = true
-    if (error === 'server_error' || errorDescription?.includes('Error confirming user')) {
-      verificationErrorMessage.value = 'Email verification failed due to a server error. Please try again.'
-    } else {
-      verificationErrorMessage.value = errorDescription || 'Email verification failed. Please try again.'
-    }
-  }
-
-  // Clean up URL parameters
-  if (verified || error) {
-    router.replace({ path: route.path })
-  }
+  // Just clean interface - no verification checks
+  console.log("Login page loaded")
 })
 </script>
