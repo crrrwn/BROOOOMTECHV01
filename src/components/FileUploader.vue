@@ -1,20 +1,20 @@
 <template>
-  <div class="w-full">
-    <!-- Upload Area -->
+  <div class="file-uploader">
+    <!-- File Drop Zone -->
     <div
       @drop="handleDrop"
-      @dragover.prevent
-      @dragenter.prevent
-      :class="[
-        'border-2 border-dashed rounded-lg p-6 text-center transition-colors duration-200',
-        isDragging ? 'border-primary-500 bg-primary-50' : 'border-gray-300 hover:border-gray-400'
-      ]"
+      @dragover.prevent="isDragging = true"
+      @dragenter.prevent="isDragging = true"
+      @dragleave="isDragging = false"
+      class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer"
+      :class="{ 'border-green-500 bg-green-50': isDragging }"
+      @click="fileInputClick"
     >
       <input
         ref="fileInput"
         type="file"
-        :multiple="multiple"
         :accept="accept"
+        :multiple="multiple"
         @change="handleFileSelect"
         class="hidden"
       />
@@ -23,91 +23,93 @@
         <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
           <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
-        
-        <div>
-          <button
-            @click="triggerFileSelect"
-            type="button"
-            class="text-primary-600 hover:text-primary-700 font-medium"
-          >
-            Click to upload
-          </button>
-          <span class="text-gray-500"> or drag and drop</span>
+        <div class="text-sm text-gray-600">
+          <span class="font-medium text-green-600 hover:text-green-500">
+            Drag and drop files here or click to browse
+          </span>
         </div>
-        
-        <p class="text-xs text-gray-500">
-          {{ acceptText }}
-        </p>
+        <p class="text-xs text-gray-500">{{ acceptText }}</p>
       </div>
     </div>
 
-    <!-- File Preview -->
-    <div v-if="files.length > 0" class="mt-4 space-y-2">
-      <div
-        v-for="(file, index) in files"
-        :key="index"
-        class="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-      >
+    <!-- Selected Files -->
+    <div v-if="selectedFiles.length > 0" class="mt-4 space-y-2">
+      <h4 class="text-sm font-medium text-gray-900">Selected Files:</h4>
+      <div v-for="(file, index) in selectedFiles" :key="index" class="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
         <div class="flex items-center space-x-3">
-          <!-- File Icon -->
           <div class="flex-shrink-0">
-            <svg v-if="file.type.startsWith('image/')" class="h-8 w-8 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+            <svg v-if="isImageFile(file)" class="h-8 w-8 text-green-500" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
             </svg>
-            <svg v-else class="h-8 w-8 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd" />
+            <svg v-else class="h-8 w-8 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" />
             </svg>
           </div>
-          
-          <!-- File Info -->
-          <div class="min-w-0 flex-1">
-            <p class="text-sm font-medium text-gray-900 truncate">{{ file.name }}</p>
-            <p class="text-xs text-gray-500">{{ formatFileSize(file.size) }}</p>
+          <div>
+            <p class="text-sm font-medium text-gray-900">{{ file.name }}</p>
+            <p class="text-xs text-gray-500">{{ formatFileSize(file.size) }} • {{ file.type || 'Unknown type' }}</p>
           </div>
         </div>
-        
-        <!-- Remove Button -->
         <button
           @click="removeFile(index)"
           class="text-red-500 hover:text-red-700 p-1"
+          type="button"
         >
-          <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+          <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 011.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
           </svg>
         </button>
       </div>
     </div>
 
-    <!-- Upload Progress -->
-    <div v-if="uploading" class="mt-4">
-      <div class="flex items-center justify-between text-sm text-gray-600 mb-2">
-        <span>Uploading...</span>
-        <span>{{ uploadProgress }}%</span>
-      </div>
-      <div class="w-full bg-gray-200 rounded-full h-2">
-        <div
-          class="bg-primary-600 h-2 rounded-full transition-all duration-300"
-          :style="{ width: uploadProgress + '%' }"
-        ></div>
-      </div>
+    <!-- Upload Button -->
+    <div v-if="selectedFiles.length > 0" class="mt-4">
+      <button
+        @click="uploadFiles"
+        :disabled="uploading"
+        class="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <svg v-if="uploading" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 100-16 8 8 0 000 16h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        {{ uploading ? 'Uploading...' : 'Upload Files' }}
+      </button>
+      <p class="mt-1 text-xs text-gray-500 text-center">Files will be saved to Supabase Storage</p>
     </div>
 
-    <!-- Upload Button -->
-    <button
-      v-if="files.length > 0 && !uploading"
-      @click="uploadFiles"
-      class="mt-4 w-full btn-primary"
-      :disabled="uploading"
-    >
-      Upload {{ files.length }} {{ files.length === 1 ? 'File' : 'Files' }}
-    </button>
+    <!-- Upload Status -->
+    <div v-if="uploadStatus" class="mt-4">
+      <div v-if="uploadStatus === 'success'" class="bg-green-50 border border-green-200 rounded-md p-3">
+        <div class="flex">
+          <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+          </svg>
+          <div class="ml-3">
+            <p class="text-sm font-medium text-green-800">Upload successful!</p>
+            <p class="text-xs text-green-600">Files saved to Supabase Storage</p>
+          </div>
+        </div>
+      </div>
+      
+      <div v-else-if="uploadStatus === 'error'" class="bg-red-50 border border-red-200 rounded-md p-3">
+        <div class="flex">
+          <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 001.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+          </svg>
+          <div class="ml-3">
+            <p class="text-sm font-medium text-red-800">{{ errorMessage }}</p>
+            <p class="text-xs text-red-600 mt-1">{{ errorSolution }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
 import { useSupabase } from '@/composables/useSupabase'
-import { useToast } from 'vue-toastification'
 
 const props = defineProps({
   accept: {
@@ -120,149 +122,194 @@ const props = defineProps({
   },
   bucket: {
     type: String,
-    default: 'uploads'
+    required: true
   },
   folder: {
     type: String,
     default: ''
-  },
-  maxSize: {
-    type: Number,
-    default: 5 * 1024 * 1024 // 5MB
   }
 })
 
 const emit = defineEmits(['uploaded', 'error'])
 
-const { uploadFile, getPublicUrl } = useSupabase()
-const toast = useToast()
+const { uploadFile, supabase } = useSupabase()
 
 const fileInput = ref(null)
-const files = ref([])
-const isDragging = ref(false)
+const selectedFiles = ref([])
 const uploading = ref(false)
-const uploadProgress = ref(0)
+const uploadStatus = ref(null)
+const errorMessage = ref('')
+const errorSolution = ref('')
+const isDragging = ref(false)
 
 const acceptText = computed(() => {
-  if (props.accept.includes('image/*')) {
-    return 'PNG, JPG, GIF up to 5MB'
+  if (props.accept.includes('image')) {
+    return 'PNG, JPG, GIF, WebP images and PDF files up to 5MB'
   }
   return 'Files up to 5MB'
 })
 
-const triggerFileSelect = () => {
-  fileInput.value?.click()
+const isImageFile = (file) => {
+  return file.type.startsWith('image/')
 }
 
-const handleFileSelect = (event) => {
-  const selectedFiles = Array.from(event.target.files)
-  addFiles(selectedFiles)
-}
-
-const handleDrop = (event) => {
-  event.preventDefault()
-  isDragging.value = false
+const isValidFileType = (file) => {
+  const acceptTypes = props.accept.split(',').map(type => type.trim())
   
-  const droppedFiles = Array.from(event.dataTransfer.files)
-  addFiles(droppedFiles)
+  for (const acceptType of acceptTypes) {
+    if (acceptType === '*') return true
+    
+    if (acceptType.includes('*')) {
+      const baseType = acceptType.split('/')[0]
+      if (file.type.startsWith(baseType + '/')) return true
+    }
+    
+    if (file.type === acceptType) return true
+    
+    if (acceptType.startsWith('.')) {
+      const extension = acceptType.toLowerCase()
+      const fileName = file.name.toLowerCase()
+      if (fileName.endsWith(extension)) return true
+    }
+  }
+  
+  return false
 }
 
-const addFiles = (newFiles) => {
-  const validFiles = newFiles.filter(file => {
-    // Check file size
-    if (file.size > props.maxSize) {
-      toast.error(`File ${file.name} is too large. Maximum size is ${formatFileSize(props.maxSize)}`)
-      return false
-    }
-    
-    // Check file type if accept is specified
-    if (props.accept && props.accept !== '*') {
-      const acceptTypes = props.accept.split(',').map(type => type.trim())
-      const isValidType = acceptTypes.some(type => {
-        if (type.startsWith('.')) {
-          return file.name.toLowerCase().endsWith(type.toLowerCase())
-        }
-        if (type.includes('/*')) {
-          const mainType = type.split('/')[0]
-          return file.type.startsWith(mainType)
-        }
-        return file.type === type
-      })
-      
-      if (!isValidType) {
-        toast.error(`File ${file.name} is not a supported file type`)
-        return false
-      }
-    }
-    
-    return true
-  })
+const handleDrop = (e) => {
+  e.preventDefault()
+  isDragging.value = false
+  const files = Array.from(e.dataTransfer.files)
+  addFiles(files)
+}
 
-  if (props.multiple) {
-    files.value = [...files.value, ...validFiles]
+const handleFileSelect = (e) => {
+  const files = Array.from(e.target.files)
+  addFiles(files)
+}
+
+const addFiles = (files) => {
+  const validFiles = []
+  const errors = []
+  
+  for (const file of files) {
+    if (file.size > 5 * 1024 * 1024) {
+      errors.push(`${file.name} is too large (${formatFileSize(file.size)}). Maximum size is 5MB.`)
+      continue
+    }
+    
+    if (!isValidFileType(file)) {
+      errors.push(`${file.name} is not supported. Please use ${props.accept} files.`)
+      continue
+    }
+    
+    validFiles.push(file)
+  }
+  
+  if (errors.length > 0) {
+    errorMessage.value = errors.join(' ')
+    errorSolution.value = 'Please select supported file types and ensure they are under 5MB.'
+    uploadStatus.value = 'error'
   } else {
-    files.value = validFiles.slice(0, 1)
+    uploadStatus.value = null
+    errorMessage.value = ''
+    errorSolution.value = ''
+  }
+  
+  if (validFiles.length > 0) {
+    if (props.multiple) {
+      selectedFiles.value = [...selectedFiles.value, ...validFiles]
+    } else {
+      selectedFiles.value = validFiles.slice(0, 1)
+    }
   }
 }
 
 const removeFile = (index) => {
-  files.value.splice(index, 1)
-}
-
-const uploadFiles = async () => {
-  if (files.value.length === 0) return
-
-  uploading.value = true
-  uploadProgress.value = 0
-  
-  try {
-    const uploadedFiles = []
-    
-    for (let i = 0; i < files.value.length; i++) {
-      const file = files.value[i]
-      const fileName = `${Date.now()}-${file.name}`
-      const filePath = props.folder ? `${props.folder}/${fileName}` : fileName
-      
-      const { data, error } = await uploadFile(props.bucket, filePath, file)
-      
-      if (error) throw error
-      
-      const publicUrl = getPublicUrl(props.bucket, filePath)
-      
-      uploadedFiles.push({
-        name: file.name,
-        path: filePath,
-        url: publicUrl,
-        size: file.size,
-        type: file.type
-      })
-      
-      uploadProgress.value = Math.round(((i + 1) / files.value.length) * 100)
-    }
-    
-    emit('uploaded', uploadedFiles)
-    toast.success(`Successfully uploaded ${uploadedFiles.length} file(s)`)
-    
-    // Clear files after successful upload
-    files.value = []
-    
-  } catch (error) {
-    console.error('Upload error:', error)
-    toast.error('Upload failed: ' + error.message)
-    emit('error', error)
-  } finally {
-    uploading.value = false
-    uploadProgress.value = 0
-  }
+  selectedFiles.value.splice(index, 1)
+  uploadStatus.value = null
 }
 
 const formatFileSize = (bytes) => {
   if (bytes === 0) return '0 Bytes'
-  
   const k = 1024
   const sizes = ['Bytes', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
-  
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
+
+const uploadFiles = async () => {
+  if (selectedFiles.value.length === 0) return
+  
+  uploading.value = true
+  uploadStatus.value = null
+  
+  try {
+    const uploadedFiles = []
+    
+    for (const file of selectedFiles.value) {
+      const timestamp = Date.now()
+      const randomString = Math.random().toString(36).substring(2, 15)
+      const fileExtension = file.name.split('.').pop()
+      const fileName = `${timestamp}_${randomString}.${fileExtension}`
+      const filePath = props.folder ? `${props.folder}/${fileName}` : fileName
+      
+      console.log(`Uploading file to: ${props.bucket}/${filePath}`)
+      
+      const { data, error } = await uploadFile(props.bucket, filePath, file)
+      
+      if (error) {
+        throw error
+      }
+      
+      const { data: urlData } = supabase.storage
+        .from(props.bucket)
+        .getPublicUrl(filePath)
+      
+      uploadedFiles.push({
+        name: file.name,
+        path: filePath,
+        url: urlData.publicUrl,
+        size: file.size,
+        type: file.type
+      })
+    }
+    
+    uploadStatus.value = 'success'
+    emit('uploaded', uploadedFiles)
+    selectedFiles.value = []
+    
+  } catch (error) {
+    console.error('Upload error:', error)
+    uploadStatus.value = 'error'
+    
+    if (error.message.includes('Bucket not found') || error.message.includes('bucket')) {
+      errorMessage.value = 'Storage bucket not found'
+      errorSolution.value = 'Please run the SQL script to create storage buckets in Supabase.'
+    } else if (error.message.includes('File size') || error.message.includes('size')) {
+      errorMessage.value = 'File too large'
+      errorSolution.value = 'Please use files smaller than 5MB'
+    } else if (error.message.includes('not allowed') || error.message.includes('mime')) {
+      errorMessage.value = 'File type not supported'
+      errorSolution.value = `Please use ${props.accept} files only`
+    } else {
+      errorMessage.value = error.message || 'Upload failed'
+      errorSolution.value = 'Please try again or contact support if the problem persists'
+    }
+    
+    emit('error', error)
+  } finally {
+    uploading.value = false
+  }
+}
+
+const fileInputClick = () => {
+  fileInput.value.click()
+}
 </script>
+
+<style scoped>
+.file-uploader {
+  width: 100%;
+}
+</style>
